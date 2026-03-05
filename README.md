@@ -1,6 +1,16 @@
 # ComfyUI-OpenRouterImage
 
-A ComfyUI custom node for generating images using the OpenRouter API. This node enables you to create high-quality images from text prompts and reference images using powerful models like Google's Gemini 3 Pro and Gemini 3.1 Flash.
+A ComfyUI custom node for generating images using the OpenRouter API. This node enables you to create high-quality images from text prompts and reference images using powerful models like Google's Gemini 3 Pro Image Preview, Gemini 3.1 Flash Image Preview, and Gemini 2.5 Flash Image.
+
+## Features
+
+- **Text-to-Image Generation**: Create images from detailed text descriptions
+- **Image-to-Image Support**: Use up to 10 reference images to guide generation
+- **Multiple AI Models**: Choose between Google Gemini 3 Pro Image Preview, Gemini 3.1 Flash Image Preview, and Gemini 2.5 Flash Image
+- **Flexible Resolutions**: Generate images from 0.5K to 4K
+- **Configurable Aspect Ratios**: Support for 1:1, 2:3, 3:2, 16:9, 9:16, 4:3, 3:4
+- **System & User Prompts**: Separate system instructions and user prompts for better control
+- **ComfyUI Native**: Seamlessly integrates with ComfyUI's node-based workflow
 
 ## Features
 
@@ -43,8 +53,7 @@ pip install -r requirements.txt
 2. Extract to `ComfyUI/custom_nodes/ComfyUI-OpenRouterImage/`
 3. Install dependencies:
    ```bash
-   pip install openai>=1.0.0 pillow>=9.0.0
-   ```
+   pip install openai>=1.0.0 pillow>=9.0.0 requests>=2.28.0
 4. Restart ComfyUI
 
 ## Quick Start
@@ -67,9 +76,9 @@ pip install -r requirements.txt
 
 ### Using Reference Images
 
-The node accepts up to 4 reference images to guide generation:
+The node accepts up to 10 reference images to guide generation:
 
-1. Connect image outputs from Load Image nodes to `image1`, `image2`, `image3`, or `image4` inputs
+1. Connect image outputs from Load Image nodes to `image1`, `image2`, ..., or `image10` inputs
 2. Describe what you want in the `user_prompt`
 3. The model will use reference images as visual context
 
@@ -99,26 +108,29 @@ Example workflow:
 | `system_prompt` | String | System instructions for the AI | "You are an expert image generation assistant..." |
 | `user_prompt` | String | Your image generation prompt | "A beautiful landscape..." |
 | `api_key` | String | Your OpenRouter API key | (empty) |
-| `model` | Dropdown | AI model to use | google/gemini-3-pro |
+| `model` | Dropdown | AI model to use | google/gemini-3-pro-image-preview |
 | `resolution` | Dropdown | Output image resolution | 1K |
 | `aspect_ratio` | Dropdown | Output aspect ratio | 1:1 |
-| `image1-4` | Image | Optional reference images | (optional) |
+| `image1-10` | Image | Optional reference images | (optional) |
 
 ### Available Models
 
 | Model | Description | Best For |
 |-------|-------------|----------|
-| `google/gemini-3-pro` | Google's flagship image model | High-quality, detailed images |
-| `google/gemini-3.1-flash` | Faster, more efficient model | Quick iterations, prototyping |
+| `google/gemini-3-pro-image-preview` | Google's flagship image model | High-quality, detailed images |
+| `google/gemini-3.1-flash-image-preview` | Faster, more efficient model | Quick iterations, prototyping (supports 0.5K resolution) |
+| `google/gemini-2.5-flash-image` | Stable, proven model | Balanced performance and quality |
 
 ### Resolution Options
 
 | Option | Dimensions | Best For |
 |--------|------------|----------|
-| 0.5K | 512x512 | Quick previews, testing |
+| 0.5K | 512x512 | Quick previews, testing (gemini-3.1-flash only) |
 | 1K | 1024x1024 | Standard quality |
 | 2K | 2048x2048 | High quality |
 | 4K | 4096x4096 | Maximum quality |
+
+**Note**: 0.5K resolution is only supported by `google/gemini-3.1-flash-image-preview`.
 
 ### Aspect Ratio Options
 
@@ -145,7 +157,7 @@ Example workflow:
 │   forest with glowing        │
 │   mushrooms at twilight"     │
 │ api_key: sk-or-...           │
-│ model: gemini-3-pro          │
+│ model: gemini-3-pro-image-preview          │
 │ resolution: 1K               │
 │ aspect_ratio: 16:9           │
 └─────────────────────────────┘
@@ -195,8 +207,8 @@ This plugin uses the OpenRouter Chat Completions API with image generation capab
 - Solution: Enter your OpenRouter API key in the `api_key` field
 - Get a free API key at [openrouter.ai](https://openrouter.ai/keys)
 
-**Error: "openai package not installed"**
-- Solution: Run `pip install openai>=1.0.0` in your ComfyUI environment
+**Error: "requests package not installed"**
+- Solution: Run `pip install requests>=2.28.0` in your ComfyUI environment
 
 **Error: "No image in response"**
 - The model may have returned text instead of an image
@@ -212,6 +224,9 @@ This plugin uses the OpenRouter Chat Completions API with image generation capab
 - Restart ComfyUI after installation
 - Check the console for import errors
 - Verify Python dependencies are installed
+
+**Error: 0.5K resolution is only supported by google/gemini-3.1-flash-image-preview**
+- Solution: Use 1K, 2K, or 4K resolution with other models, or switch to gemini-3.1-flash-image-preview for 0.5K
 
 ### Getting Help
 
@@ -231,7 +246,7 @@ This plugin uses the OpenRouter Chat Completions API with image generation capab
 - Image generation requires an active internet connection
 - API usage is subject to OpenRouter's rate limits and pricing
 - Generated images may vary in quality based on the prompt
-- Reference images are limited to 4 per request
+- Reference images are limited to 10 per request
 
 ## Credits
 
@@ -245,10 +260,17 @@ MIT License - See LICENSE file for details
 
 ## Changelog
 
+### v1.1.0
+- Updated model names to use -image-preview suffix
+- Added support for up to 10 reference images
+- Added gemini-2.5-flash-image model
+- Added 0.5K resolution support (gemini-3.1-flash only)
+- Updated to use direct requests API instead of OpenAI SDK
+
 ### v1.0.0
 - Initial release
-- Support for Gemini 3 Pro and Gemini 3.1 Flash
+- Support for Gemini image models
 - Text-to-image generation
-- Image-to-image with up to 4 reference images
+- Image-to-image with reference images
 - Configurable resolution and aspect ratio
 - ComfyUI native node integration
