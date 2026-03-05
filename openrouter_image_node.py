@@ -27,9 +27,12 @@ class OpenRouterImageNode:
     MODELS = [
         "google/gemini-3-pro-image-preview",
         "google/gemini-3.1-flash-image-preview",
+        "google/gemini-2.5-flash-image",
     ]
+
     # Resolution options for dropdown
     RESOLUTIONS = [
+        "0.5K",
         "1K",
         "2K",
         "4K",
@@ -113,6 +116,7 @@ class OpenRouterImageNode:
                 "image8": ("IMAGE",),
                 "image9": ("IMAGE",),
                 "image10": ("IMAGE",),
+            },
         }
 
     def _collect_reference_images(
@@ -131,13 +135,24 @@ class OpenRouterImageNode:
         """Collect and convert reference images from input tensors.
 
         Args:
-            image1-4: Optional ComfyUI image tensors (B, H, W, C) float 0-1
+            image1-10: Optional ComfyUI image tensors (B, H, W, C) float 0-1
 
         Returns:
             List of PIL Images in RGB mode
         """
         images = []
-        for img_tensor in [image1, image2, image3, image4]:
+        for img_tensor in [
+            image1,
+            image2,
+            image3,
+            image4,
+            image5,
+            image6,
+            image7,
+            image8,
+            image9,
+            image10,
+        ]:
             if img_tensor is not None:
                 try:
                     pils = tensor_to_pils(img_tensor)
@@ -344,6 +359,12 @@ class OpenRouterImageNode:
         image2: Optional[torch.Tensor] = None,
         image3: Optional[torch.Tensor] = None,
         image4: Optional[torch.Tensor] = None,
+        image5: Optional[torch.Tensor] = None,
+        image6: Optional[torch.Tensor] = None,
+        image7: Optional[torch.Tensor] = None,
+        image8: Optional[torch.Tensor] = None,
+        image9: Optional[torch.Tensor] = None,
+        image10: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, str]:
         """Generate image using OpenRouter API.
 
@@ -354,7 +375,7 @@ class OpenRouterImageNode:
             model: Selected model identifier
             resolution: Image resolution (0.5K, 1K, 2K, 4K)
             aspect_ratio: Aspect ratio (1:1, 2:3, etc.)
-            image1-4: Optional reference image tensors
+            image1-10: Optional reference image tensors
 
         Returns:
             Tuple of (generated image tensor, status string)
@@ -368,7 +389,16 @@ class OpenRouterImageNode:
 
         # Collect reference images
         reference_images = self._collect_reference_images(
-            image1, image2, image3, image4
+            image1,
+            image2,
+            image3,
+            image4,
+            image5,
+            image6,
+            image7,
+            image8,
+            image9,
+            image10,
         )
 
         # Build messages for API
