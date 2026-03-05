@@ -8,26 +8,9 @@
     {
       "id": "google/gemini-3.1-flash-image-preview",
       "name": "Gemini 3.1 Flash Image"
-    },
-    {
-      "id": "google/gemini-2.5-flash-image-preview",
-      "name": "Gemini 2.5 Flash Image"
-    }
-  ],
-    {
-      "id": "google/gemini-3-pro-image-preview",
-      "name": "Gemini 3 Pro Image"
-    },
-    {
-      "id": "google/gemini-3.1-flash-image-preview",
-      "name": "Gemini 3.1 Flash Image"
     }
   ],
   "resolutions": [
-    {
-      "value": "0.5K",
-      "name": "0.5K (512x512)"
-    },
     {
       "value": "1K",
       "name": "1K (1024x1024)"
