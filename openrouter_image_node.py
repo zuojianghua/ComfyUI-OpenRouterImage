@@ -237,13 +237,13 @@ class OpenRouterImageNode:
         if not api_key:
             return None, "Error: API key is required"
 
-        # Use requests for direct API call (OpenAI SDK doesn't support image_config)
+        # Use OpenAI SDK
         try:
-            import requests
+            from openai import OpenAI
         except ImportError:
             return (
                 None,
-                "Error: requests package not installed. Run: pip install requests",
+                "Error: openai package not installed. Run: pip install openai",
             )
 
         # Validate resolution compatibility
@@ -255,14 +255,14 @@ class OpenRouterImageNode:
                 f"but current model is {model}. Please use 1K, 2K, or 4K instead.",
             )
 
-        # Build request payload
-        payload = {
-            "model": model,
-            "messages": messages,
+        # Build extra_body configuration for OpenAI SDK
+        extra_body = {
             "modalities": ["image", "text"],
+            "temperature": 0.6,
+            "candidateCount": 1,
         }
 
-        # Add image_config only if needed
+        # Add image_config
         image_config = {}
         if aspect_ratio != "1:1":
             image_config["aspect_ratio"] = aspect_ratio
@@ -270,68 +270,55 @@ class OpenRouterImageNode:
             image_config["image_size"] = resolution
 
         if image_config:
-            payload["image_config"] = image_config
+            extra_body["image_config"] = image_config
 
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        }
+        # Debug: print configuration being sent
+        import json
+        print(
+            f"[ComfyUI-OpenRouterImage] Using OpenAI SDK with extra_body: {json.dumps(extra_body, indent=2)}"
+        )
 
-        # Call OpenRouter API
+        # Initialize OpenAI client
+        client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=api_key,
+        )
+
+        # Call OpenRouter API using OpenAI SDK
         try:
-            response = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=60,
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                extra_body=extra_body,
             )
-            response.raise_for_status()
-            result = response.json()
-        except requests.exceptions.RequestException as e:
-            return None, f"API Error: {str(e)}"
         except Exception as e:
-            return None, f"Error: {str(e)}"
+            return None, f"API Error: {str(e)}"
 
         # Parse response to extract generated image
         try:
-            message = result["choices"][0]["message"]
+            message = response.choices[0].message
 
             # Check for images in the response
-            if "images" in message and message["images"]:
-                # Get the first generated image
-                first_image = message["images"][0]
-                if "image_url" in first_image and first_image["image_url"]:
-                    image_url = first_image["image_url"]
-                    if isinstance(image_url, dict):
-                        image_url = image_url.get("url", "")
+            if hasattr(message, "images") and message.images:
+                # Get the last image (usually the highest resolution)
+                last_image_idx = len(message.images) - 1
+                image_url = message.images[last_image_idx]["image_url"]["url"]
 
-                    if image_url.startswith("data:image"):
-                        # Extract base64 data
-                        base64_str = image_url.split(",", 1)[1]
-                        pil_img = base64_to_pil(base64_str)
-                        return pil_img, "Image generated successfully"
-
-            # Check for image in content (alternative format)
-            if "content" in message and message["content"]:
-                content = message["content"]
-                if isinstance(content, list):
-                    for item in content:
-                        if isinstance(item, dict) and item.get("type") == "image_url":
-                            image_url = item["image_url"].get("url", "")
-                            if image_url.startswith("data:image"):
-                                base64_str = image_url.split(",", 1)[1]
-                                pil_img = base64_to_pil(base64_str)
-                                return pil_img, "Image generated successfully"
+                if image_url.startswith("data:image"):
+                    # Extract base64 data
+                    base64_str = image_url.split(",", 1)[1]
+                    pil_img = base64_to_pil(base64_str)
+                    return pil_img, "Image generated successfully"
 
             # No image found - return text content as status
             text_content = ""
-            if "content" in message:
-                if isinstance(message["content"], str):
-                    text_content = message["content"]
-                elif isinstance(message["content"], list):
+            if hasattr(message, "content"):
+                if isinstance(message.content, str):
+                    text_content = message.content
+                elif isinstance(message.content, list):
                     text_parts = [
                         item.get("text", "")
-                        for item in message["content"]
+                        for item in message.content
                         if isinstance(item, dict) and item.get("type") == "text"
                     ]
                     text_content = " ".join(text_parts)
