@@ -74,6 +74,14 @@ def _fetch_image_from_url(url: str) -> Image.Image:
         return pil
 
 
+def _strip_size_label(size: str) -> str:
+    # Dropdown entries look like "(1:1) 1024x1024"; the API only accepts the raw "1024x1024" part.
+    if size and size.startswith("("):
+        _, _, rest = size.partition(") ")
+        return rest or size
+    return size
+
+
 def _extract_pil_images_from_response(response) -> List[Image.Image]:
     data = getattr(response, "data", None) or []
     images: List[Image.Image] = []
@@ -104,21 +112,24 @@ class WangsuImageNode:
 
     SIZES = [
         "auto",
-        "1024x1024",
-        "1536x1024",
-        "1024x1536",
-        "1824x1024",
-        "1024x1824",
-        "2048x2048",
-        "2048x1360",
-        "1360x2048",
-        "2048x1152",
-        "1152x2048",
-        "2880x2880",
-        "3504x2336",
-        "2336x3504",
-        "3840x2160",
-        "2160x3840",
+        "(1:1) 1024x1024",
+        "(3:2) 1536x1024",
+        "(2:3) 1024x1536",
+        "(16:9) 1824x1024",
+        "(9:16) 1024x1824",
+        "(21:9) 1008x432",
+        "(1:1) 2048x2048",
+        "(3:2) 2048x1360",
+        "(2:3) 1360x2048",
+        "(16:9) 2048x1152",
+        "(9:16) 1152x2048",
+        "(21:9) 2352x1008",
+        "(1:1) 2880x2880",
+        "(3:2) 3504x2336",
+        "(2:3) 2336x3504",
+        "(16:9) 3840x2160",
+        "(9:16) 2160x3840",
+        "(21:9) 3696x1584",
     ]
 
     QUALITIES = ["auto", "low", "medium", "high"]
@@ -146,7 +157,7 @@ class WangsuImageNode:
                     },
                 ),
                 "n": ("INT", {"default": 1, "min": 1, "max": 10, "step": 1}),
-                "size": (cls.SIZES, {"default": "1024x1024"}),
+                "size": (cls.SIZES, {"default": "(1:1) 1024x1024"}),
                 "quality": (cls.QUALITIES, {"default": "auto"}),
                 "background": (cls.BACKGROUNDS, {"default": "auto"}),
                 "seed": (
@@ -208,7 +219,7 @@ class WangsuImageNode:
     ) -> dict:
         kwargs: dict = {"model": model, "n": n}
         if size and size != "auto":
-            kwargs["size"] = size
+            kwargs["size"] = _strip_size_label(size)
         if include_quality and quality and quality != "auto":
             kwargs["quality"] = quality
         if include_background and background and background != "auto":
@@ -265,7 +276,7 @@ class WangsuImageNode:
         # /images/variations does not accept prompt, quality, or background.
         kwargs: dict = {"model": model, "n": n, "image": image_arg}
         if size and size != "auto":
-            kwargs["size"] = size
+            kwargs["size"] = _strip_size_label(size)
         return client.images.create_variation(**kwargs)
 
     def generate(
