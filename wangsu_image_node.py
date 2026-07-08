@@ -7,6 +7,7 @@ Supports system/user prompts, multiple reference images, and configurable resolu
 import base64
 import json
 import os
+import random
 from pathlib import Path
 from urllib.request import urlopen
 from typing import Optional, Tuple
@@ -111,6 +112,26 @@ class WangsuBananaImageNode:
                     cls.ASPECT_RATIOS,
                     {
                         "default": "1:1",
+                    },
+                ),
+                "temperature": (
+                    "FLOAT",
+                    {
+                        "default": 0.6,
+                        "min": 0.0,
+                        "max": 2.0,
+                        "step": 0.01,
+                        "tooltip": "Controls randomness: 0 = deterministic, higher = more creative",
+                    },
+                ),
+                "seed": (
+                    "INT",
+                    {
+                        "default": -1,
+                        "min": -1,
+                        "max": 2147483647,
+                        "step": 1,
+                        "tooltip": "Seed for reproducible generation. -1 = random each run",
                     },
                 ),
             },
@@ -282,6 +303,8 @@ class WangsuBananaImageNode:
         messages: list[dict],
         resolution: str,
         aspect_ratio: str,
+        temperature: float = 0.6,
+        seed: int = -1,
     ) -> Tuple[Optional[Image.Image], str]:
         """Call Wangsu API to generate image.
 
@@ -328,7 +351,7 @@ class WangsuBananaImageNode:
 
         extra_body = {
             "modalities": ["image", "text"],
-            "temperature": 0.6,
+            "temperature": temperature,
             "candidateCount": 1,
             "image_config": {
                 "image_size": resolution,
@@ -339,6 +362,10 @@ class WangsuBananaImageNode:
                 "aspect_ratio": aspect_ratio,
             },
         }
+
+        # Use random seed if seed is -1, otherwise use specified seed
+        if seed != -1:
+            extra_body["seed"] = seed
 
         print(
             f"[ComfyUI-WangsuImage] Using OpenAI SDK with extra_body: {json.dumps(extra_body, indent=2)}"
@@ -399,6 +426,8 @@ class WangsuBananaImageNode:
         model: str,
         resolution: str,
         aspect_ratio: str,
+        temperature: float = 0.6,
+        seed: int = -1,
         image1: Optional[torch.Tensor] = None,
         image2: Optional[torch.Tensor] = None,
         image3: Optional[torch.Tensor] = None,
@@ -447,12 +476,19 @@ class WangsuBananaImageNode:
         # Build messages for API
         messages = self._build_messages(system_prompt, user_prompt, reference_images)
 
+        # Resolve seed: if -1, generate a random seed
+        if seed == -1:
+            seed = random.randint(0, 2**31 - 1)
+        print(f"[ComfyUI-WangsuImage] Using seed: {seed}, temperature: {temperature}")
+
         # Call API
         generated_img, status = self._call_wangsu_api(
             model=model,
             messages=messages,
             resolution=resolution,
             aspect_ratio=aspect_ratio,
+            temperature=temperature,
+            seed=seed,
         )
 
         if generated_img is None:
