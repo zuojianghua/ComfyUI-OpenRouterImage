@@ -13,6 +13,7 @@ import torch
 from dotenv import load_dotenv
 from PIL import Image
 
+from .jizhu_reporting import report_image
 from .utils import tensor_to_pils, pils_to_tensor, pil_to_base64_data_url, base64_to_pil
 
 
@@ -422,12 +423,15 @@ class OpenRouterImageNode:
         # Build messages for API
         messages = self._build_messages(system_prompt, user_prompt, reference_images)
 
-        # Call API
-        generated_img, status = self._call_openrouter_api(
-            model=model,
-            messages=messages,
-            resolution=resolution,
-            aspect_ratio=aspect_ratio,
+        generated_img, status = report_image(
+            model,
+            "openrouter",
+            lambda: self._call_openrouter_api(
+                model=model,
+                messages=messages,
+                resolution=resolution,
+                aspect_ratio=aspect_ratio,
+            ),
         )
 
         if generated_img is None:

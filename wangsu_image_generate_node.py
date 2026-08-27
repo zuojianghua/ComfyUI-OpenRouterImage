@@ -31,6 +31,7 @@ import torch
 from dotenv import load_dotenv
 from PIL import Image
 
+from .jizhu_reporting import report_image
 from .utils import base64_to_pil, pils_to_tensor, tensor_to_pils
 
 
@@ -334,9 +335,14 @@ class WangsuImageNode:
             ]
         )
 
+        if mode == "generate" and not prompt.strip():
+            return placeholder, "Error: prompt is required for generate mode"
+        if mode in ("edit", "variation") and not reference_pils:
+            return placeholder, f"Error: mode='{mode}' requires a reference image"
+
         common_kwargs = self._build_common_kwargs(
             model=model,
-            n=n,
+            n=1,
             size=size,
             quality=quality,
             background=background,
@@ -353,33 +359,37 @@ class WangsuImageNode:
             f"seed={seed} ref_images={len(reference_pils)} base_url={base_url}"
         )
 
-        try:
-            if mode == "generate":
-                response = self._call_generate(client, prompt, common_kwargs)
-            elif mode == "edit":
-                response = self._call_edit(
-                    client, prompt, reference_pils, common_kwargs
-                )
-            else:
-                response = self._call_variation(
-                    client,
-                    reference_pils,
-                    model=model,
-                    n=n,
-                    size=size,
-                )
-        except ValueError as e:
-            return placeholder, f"Error: {e}"
-        except Exception as e:
-            return placeholder, f"API Error ({mode}): {e}"
+        pil_images = []
+        failures = []
+        for _ in range(n):
+            def generate_one():
+                if mode == "generate":
+                    response = self._call_generate(client, prompt, common_kwargs)
+                elif mode == "edit":
+                    response = self._call_edit(
+                        client, prompt, reference_pils, common_kwargs
+                    )
+                else:
+                    response = self._call_variation(
+                        client,
+                        reference_pils,
+                        model=model,
+                        n=1,
+                        size=size,
+                    )
+                images = _extract_pil_images_from_response(response)
+                if not images:
+                    return None, f"no image data returned by {mode} endpoint"
+                return images[0], "OK"
 
-        try:
-            pil_images = _extract_pil_images_from_response(response)
-        except Exception as e:
-            return placeholder, f"Error decoding response: {e}"
+            image, status = report_image(model, "wangsu", generate_one)
+            if image is None:
+                failures.append(status)
+                continue
+            pil_images.append(image)
 
         if not pil_images:
-            return placeholder, f"Error: no image data returned by {mode} endpoint"
+            return placeholder, f"Error: {failures[0]}"
 
         try:
             image_tensor = pils_to_tensor(pil_images)
@@ -387,6 +397,8 @@ class WangsuImageNode:
             return placeholder, f"Error converting image to tensor: {e}"
 
         status = f"OK: mode={mode} returned {len(pil_images)} image(s)"
+        if failures:
+            status += f"; {len(failures)} image(s) failed"
         return image_tensor, status
 
 
