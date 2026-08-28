@@ -16,6 +16,7 @@ import torch
 from dotenv import load_dotenv
 from PIL import Image
 
+from .jizhu_reporting import report_image
 from .utils import tensor_to_pils, pils_to_tensor, pil_to_base64_data_url, base64_to_pil
 
 
@@ -481,14 +482,17 @@ class WangsuBananaImageNode:
             seed = random.randint(0, 2**31 - 1)
         print(f"[ComfyUI-WangsuImage] Using seed: {seed}, temperature: {temperature}")
 
-        # Call API
-        generated_img, status = self._call_wangsu_api(
-            model=model,
-            messages=messages,
-            resolution=resolution,
-            aspect_ratio=aspect_ratio,
-            temperature=temperature,
-            seed=seed,
+        generated_img, status = report_image(
+            model,
+            "wangsu",
+            lambda: self._call_wangsu_api(
+                model=model,
+                messages=messages,
+                resolution=resolution,
+                aspect_ratio=aspect_ratio,
+                temperature=temperature,
+                seed=seed,
+            ),
         )
 
         if generated_img is None:
